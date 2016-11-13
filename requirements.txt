@@ -1,0 +1,16 @@
+click==6.6
+cozmo==0.8.1
+cozmoclad==1.0.3
+Flask==0.11.1
+future==0.16.0
+gevent==1.2a1
+greenlet==0.4.10
+itsdangerous==0.24
+Jinja2==2.8
+MarkupSafe==0.23
+msgpack-python==0.4.8
+numpy==1.11.2
+Pillow==3.4.2
+pyzmq==16.0.1
+Werkzeug==0.11.11
+zerorpc==0.6.0
