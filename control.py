@@ -36,8 +36,7 @@ class RemoteControlCozmo:
         '''Called on any key press or release
            Holding a key down may result in repeated handle_key calls with is_key_down==True
         '''
-        logging.warn('Key registered')
-        # Update desired speed / fidelity of actions based on shift/alt being held
+         # Update desired speed / fidelity of actions based on shift/alt being held
         was_go_fast = self.go_fast
         was_go_slow = self.go_slow
 
@@ -110,7 +109,7 @@ class RemoteControlCozmo:
 
     def try_say_text(self, text_to_say):
         try:
-            self.cozmo.say_text(text_to_say)
+            self.cozmo.say_text(text_to_say, False, True, 1.0, -16.0)
             return True
         except cozmo.exceptions.RobotBusy:
             return False
@@ -197,7 +196,7 @@ class Control(control_pb2.ControlServicer):
         self.last_camera_image = control_pb2.ImageReply(image=(self.serve_pil_image(default_camera_image)))
         self.last_camera_update_time = int(time.time() * 1000)
 
-    def serve_pil_image(self, pil_img, jpeg_quality=40):
+    def serve_pil_image(self, pil_img, jpeg_quality=50):
         '''Convert PIL image to relevant image file and send it'''
         img_io = BytesIO()
         pil_img.save(img_io, 'JPEG')
