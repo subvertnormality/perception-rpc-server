@@ -256,7 +256,7 @@ if __name__ == '__main__':
     cozmo.setup_basic_logging()
     while True:
         try:
-            cozmo.connect(run)
+            cozmo.connect(run, connector=cozmo.run.FirstAvailableConnector())
             break
         except cozmo.ConnectionError as e:
             logging.error("A connection error occurred: %s. Retrying in 10 seconds" % e)
