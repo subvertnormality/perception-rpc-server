@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='control.proto',
   package='control',
   syntax='proto3',
-  serialized_pb=_b('\n\rcontrol.proto\x12\x07\x63ontrol\"\x0c\n\nEmptyEvent\"\x19\n\tTextEvent\x12\x0c\n\x04text\x18\x01 \x01(\t\"s\n\x08KeyEvent\x12\x10\n\x08key_code\x18\x01 \x01(\x05\x12\x15\n\ris_shift_down\x18\x02 \x01(\x05\x12\x14\n\x0cis_ctrl_down\x18\x03 \x01(\x05\x12\x13\n\x0bis_alt_down\x18\x04 \x01(\x05\x12\x13\n\x0bis_key_down\x18\x05 \x01(\x08\"\x1b\n\nImageReply\x12\r\n\x05image\x18\x01 \x01(\x0c\"\x18\n\x05Reply\x12\x0f\n\x07message\x18\x01 \x01(\t2\xbf\x01\n\x07\x43ontrol\x12\x35\n\x0ehandleKeyEvent\x12\x11.control.KeyEvent\x1a\x0e.control.Reply\"\x00\x12\x41\n\x13handleImageGetEvent\x12\x13.control.EmptyEvent\x1a\x13.control.ImageReply\"\x00\x12:\n\x12handleSayTextEvent\x12\x12.control.TextEvent\x1a\x0e.control.Reply\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rcontrol.proto\x12\x07\x63ontrol\"\x0c\n\nEmptyEvent\"\x19\n\tTextEvent\x12\x0c\n\x04text\x18\x01 \x01(\t\"s\n\x08KeyEvent\x12\x10\n\x08key_code\x18\x01 \x01(\x05\x12\x15\n\ris_shift_down\x18\x02 \x01(\x05\x12\x14\n\x0cis_ctrl_down\x18\x03 \x01(\x05\x12\x13\n\x0bis_alt_down\x18\x04 \x01(\x05\x12\x13\n\x0bis_key_down\x18\x05 \x01(\x08\"\x1b\n\nImageReply\x12\r\n\x05image\x18\x01 \x01(\x0c\"\x18\n\x05Reply\x12\x0f\n\x07message\x18\x01 \x01(\t2\xfa\x01\n\x07\x43ontrol\x12\x35\n\x0ehandleKeyEvent\x12\x11.control.KeyEvent\x1a\x0e.control.Reply\"\x00\x12\x41\n\x13handleImageGetEvent\x12\x13.control.EmptyEvent\x1a\x13.control.ImageReply\"\x00\x12:\n\x12handleSayTextEvent\x12\x12.control.TextEvent\x1a\x0e.control.Reply\"\x00\x12\x39\n\x10handleResetEvent\x12\x13.control.EmptyEvent\x1a\x0e.control.Reply\"\x00\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -273,6 +273,11 @@ class ControlStub(object):
         request_serializer=TextEvent.SerializeToString,
         response_deserializer=Reply.FromString,
         )
+    self.handleResetEvent = channel.unary_unary(
+        '/control.Control/handleResetEvent',
+        request_serializer=EmptyEvent.SerializeToString,
+        response_deserializer=Reply.FromString,
+        )
 
 
 class ControlServicer(object):
@@ -290,6 +295,11 @@ class ControlServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def handleSayTextEvent(self, request, context):
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def handleResetEvent(self, request, context):
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -312,6 +322,11 @@ def add_ControlServicer_to_server(servicer, server):
           request_deserializer=TextEvent.FromString,
           response_serializer=Reply.SerializeToString,
       ),
+      'handleResetEvent': grpc.unary_unary_rpc_method_handler(
+          servicer.handleResetEvent,
+          request_deserializer=EmptyEvent.FromString,
+          response_serializer=Reply.SerializeToString,
+      ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'control.Control', rpc_method_handlers)
@@ -332,6 +347,8 @@ class BetaControlServicer(object):
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
   def handleSayTextEvent(self, request, context):
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+  def handleResetEvent(self, request, context):
+    context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
 
 class BetaControlStub(object):
@@ -351,6 +368,9 @@ class BetaControlStub(object):
   def handleSayTextEvent(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
     raise NotImplementedError()
   handleSayTextEvent.future = None
+  def handleResetEvent(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+    raise NotImplementedError()
+  handleResetEvent.future = None
 
 
 def beta_create_Control_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
@@ -362,16 +382,19 @@ def beta_create_Control_server(servicer, pool=None, pool_size=None, default_time
   request_deserializers = {
     ('control.Control', 'handleImageGetEvent'): EmptyEvent.FromString,
     ('control.Control', 'handleKeyEvent'): KeyEvent.FromString,
+    ('control.Control', 'handleResetEvent'): EmptyEvent.FromString,
     ('control.Control', 'handleSayTextEvent'): TextEvent.FromString,
   }
   response_serializers = {
     ('control.Control', 'handleImageGetEvent'): ImageReply.SerializeToString,
     ('control.Control', 'handleKeyEvent'): Reply.SerializeToString,
+    ('control.Control', 'handleResetEvent'): Reply.SerializeToString,
     ('control.Control', 'handleSayTextEvent'): Reply.SerializeToString,
   }
   method_implementations = {
     ('control.Control', 'handleImageGetEvent'): face_utilities.unary_unary_inline(servicer.handleImageGetEvent),
     ('control.Control', 'handleKeyEvent'): face_utilities.unary_unary_inline(servicer.handleKeyEvent),
+    ('control.Control', 'handleResetEvent'): face_utilities.unary_unary_inline(servicer.handleResetEvent),
     ('control.Control', 'handleSayTextEvent'): face_utilities.unary_unary_inline(servicer.handleSayTextEvent),
   }
   server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
@@ -387,16 +410,19 @@ def beta_create_Control_stub(channel, host=None, metadata_transformer=None, pool
   request_serializers = {
     ('control.Control', 'handleImageGetEvent'): EmptyEvent.SerializeToString,
     ('control.Control', 'handleKeyEvent'): KeyEvent.SerializeToString,
+    ('control.Control', 'handleResetEvent'): EmptyEvent.SerializeToString,
     ('control.Control', 'handleSayTextEvent'): TextEvent.SerializeToString,
   }
   response_deserializers = {
     ('control.Control', 'handleImageGetEvent'): ImageReply.FromString,
     ('control.Control', 'handleKeyEvent'): Reply.FromString,
+    ('control.Control', 'handleResetEvent'): Reply.FromString,
     ('control.Control', 'handleSayTextEvent'): Reply.FromString,
   }
   cardinalities = {
     'handleImageGetEvent': cardinality.Cardinality.UNARY_UNARY,
     'handleKeyEvent': cardinality.Cardinality.UNARY_UNARY,
+    'handleResetEvent': cardinality.Cardinality.UNARY_UNARY,
     'handleSayTextEvent': cardinality.Cardinality.UNARY_UNARY,
   }
   stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)

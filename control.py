@@ -17,7 +17,9 @@ class RemoteControlCozmo:
 
     def __init__(self, coz):
         self.cozmo = coz
+        self.reset()
 
+    def reset(self):
         self.drive_forwards = 0
         self.drive_back = 0
         self.turn_left = 0
@@ -31,6 +33,10 @@ class RemoteControlCozmo:
         self.go_slow = 0
 
         self.action_queue = []
+
+        self.update_driving()
+        self.update_head()
+        self.update_lift()
 
     def handle_key(self, key_code, is_shift_down, is_ctrl_down, is_alt_down, is_key_down):
         '''Called on any key press or release
@@ -233,6 +239,11 @@ class Control(control_pb2.ControlServicer):
 
             remote_control_cozmo.try_say_text(payload.text)
             return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
+
+    def handleResetEvent(self, payload, more):
+        if remote_control_cozmo:
+            remote_control_cozmo.reset()
+        return control_pb2.Reply(message="Success")
 
 
 def run(sdk_conn):
