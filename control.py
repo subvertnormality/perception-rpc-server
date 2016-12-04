@@ -93,19 +93,6 @@ class RemoteControlCozmo:
         if update_lift:
             self.update_lift()
 
-        # Handle any keys being released (e.g. the end of a key-click)
-        if not is_key_down:
-            if (key_code >= ord('0')) and (key_code <= ord('9')):
-                anim_name = self.key_code_to_anim_name(key_code)
-                self.play_animation(anim_name)
-
-
-    def key_code_to_anim_name(self, key_code):
-        key_num = key_code - ord('0')
-        anim_num = self.anim_index_for_key[key_num]
-        anim_name = self.anim_names[anim_num]
-        return anim_name
-
 
     def queue_action(self, new_action):
         if len(self.action_queue) > 10:
@@ -234,9 +221,6 @@ class Control(control_pb2.ControlServicer):
 
     def handleSayTextEvent(self, payload, more):
         if remote_control_cozmo:
-            
-            logging.warn('Attempting to say text')
-
             remote_control_cozmo.try_say_text(payload.text)
             return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
 
