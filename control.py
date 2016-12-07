@@ -102,7 +102,7 @@ class RemoteControlCozmo:
 
     def try_say_text(self, text_to_say):
         try:
-            self.cozmo.say_text(text_to_say, False, True, 1.0, -16.0)
+            self.cozmo.say_text(text_to_say, False, False, 1.0, -16.0)
             return True
         except cozmo.exceptions.RobotBusy:
             return False
