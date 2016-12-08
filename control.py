@@ -67,9 +67,9 @@ class RemoteControlCozmo:
 
         # Update state of lift move intent from keyboard, and if anything changed then call update_lift
         update_lift = True
-        if key_code == ord('R'):
+        if key_code == ord('T'):
             self.lift_up = is_key_down
-        elif key_code == ord('F'):
+        elif key_code == ord('G'):
             self.lift_down = is_key_down
         else:
             if not speed_changed:
@@ -77,9 +77,9 @@ class RemoteControlCozmo:
 
         # Update state of head move intent from keyboard, and if anything changed then call update_head
         update_head = True
-        if key_code == ord('T'):
+        if key_code == ord('R'):
             self.head_up = is_key_down
-        elif key_code == ord('G'):
+        elif key_code == ord('F'):
             self.head_down = is_key_down
         else:
             if not speed_changed:
