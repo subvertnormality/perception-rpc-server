@@ -10,7 +10,7 @@ import control_pb2
 import logging
 import threading
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw
 from subprocess import Popen, PIPE
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -183,6 +183,32 @@ class RemoteControlCozmo:
 
         self.cozmo.drive_wheels(l_wheel_speed, r_wheel_speed, l_wheel_speed*4, r_wheel_speed*4)
 
+class BatteryStateDisplay(cozmo.annotate.Annotator):
+    def apply(self, image, scale):
+        d = ImageDraw.Draw(image)
+
+        bounds = [15, 15, image.width - 60, image.height]
+
+        def print_line(text_line):
+            if robot.battery_voltage < 2:
+                color = 'red'
+            else:
+                color = 'green'
+
+            text = cozmo.annotate.ImageText(text_line, position=cozmo.annotate.TOP_RIGHT, color=color)
+            text.render(d, bounds)
+            TEXT_HEIGHT = 40
+            bounds[1] += TEXT_HEIGHT
+
+        robot = self.world.robot
+
+        battery_voltage = round(robot.battery_voltage,2)
+        
+        if battery_voltage < 1.5:
+            print_line('Battery: %s - Return to charger!' % battery_voltage)
+        else:
+            print_line('Battery: %s' % battery_voltage)
+
 
 class Control(control_pb2.ControlServicer):
 
@@ -199,14 +225,14 @@ class Control(control_pb2.ControlServicer):
         self.camera_image = default_camera_image
         self.last_camera_update_time = int(time.time() * 1000)
         scheduler = BackgroundScheduler()
-        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06, max_instances=50, misfire_grace_time=10)
+        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06)
         scheduler.start()
 
     def refreshImage(self):
         if remote_control_cozmo:
             image = remote_control_cozmo.cozmo.world.latest_image
             if image:
-                self.camera_image = self.serve_pil_image(image.raw_image)
+                self.camera_image = self.serve_pil_image(image.annotate_image(scale=2))
         
     def serve_pil_image(self, pil_img, jpeg_quality=50):
         '''Convert PIL image to relevant image file and send it'''
@@ -242,7 +268,7 @@ class Control(control_pb2.ControlServicer):
 
 def run(sdk_conn):
     robot = sdk_conn.wait_for_robot()
-
+    robot.world.image_annotator.add_annotator('battery', BatteryStateDisplay);
     global remote_control_cozmo
     remote_control_cozmo = RemoteControlCozmo(robot)
 
@@ -259,6 +285,7 @@ def run(sdk_conn):
 
 if __name__ == '__main__':
     cozmo.setup_basic_logging()
+
     while True:
         try:
             cozmo.connect(run, connector=cozmo.run.FirstAvailableConnector())
