@@ -199,7 +199,7 @@ class Control(control_pb2.ControlServicer):
         self.camera_image = default_camera_image
         self.last_camera_update_time = int(time.time() * 1000)
         scheduler = BackgroundScheduler()
-        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06)
+        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06, max_instances=50, misfire_grace_time=10)
         scheduler.start()
 
     def refreshImage(self):
