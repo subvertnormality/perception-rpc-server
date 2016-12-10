@@ -8,8 +8,11 @@ import concurrent.futures as futures
 import grpc
 import control_pb2
 import logging
+import threading
 from io import BytesIO
 from PIL import Image
+from subprocess import Popen, PIPE
+from apscheduler.schedulers.background import BackgroundScheduler
 
 remote_control_cozmo = None
 
@@ -183,32 +186,39 @@ class RemoteControlCozmo:
 
 class Control(control_pb2.ControlServicer):
 
+    while True:
+        try:
+            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '18', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-an', '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-r', '24', '-f', 'flv', 'rtmp://live-lhr.twitch.tv/app/live_100410137_UynR1tTmKSA9yPdy9AOV4VpSGYFkjl'], stdin=PIPE)
+        except:
+            continue
+        break
+
     def __init__(self):
         image_bytes = bytearray([0x70, 0x70, 0x70]) * 320 * 240
         default_camera_image = Image.frombytes('RGB', (320, 240), bytes(image_bytes))
-        self.last_camera_image = control_pb2.ImageReply(image=(self.serve_pil_image(default_camera_image)))
+        self.camera_image = default_camera_image
         self.last_camera_update_time = int(time.time() * 1000)
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06)
+        scheduler.start()
 
+    def refreshImage(self):
+        if remote_control_cozmo:
+            image = remote_control_cozmo.cozmo.world.latest_image
+            if image:
+                self.camera_image = self.serve_pil_image(image.raw_image)
+        
     def serve_pil_image(self, pil_img, jpeg_quality=50):
         '''Convert PIL image to relevant image file and send it'''
         img_io = BytesIO()
         pil_img.save(img_io, 'JPEG')
+        pil_img.save(self.ffmpeg_process.stdin, 'JPEG')
         img_io.seek(0)
 
         return img_io.getvalue()
 
     def handleImageGetEvent(self, payload, more):
-        if remote_control_cozmo:
-            image = remote_control_cozmo.cozmo.world.latest_image
-            if image:
-                curr_time = int(time.time() * 1000)
-                if (curr_time - self.last_camera_update_time > 33):
-                    self.last_camera_update_time = curr_time
-                    new_camera_image = control_pb2.ImageReply(image=(self.serve_pil_image(image.raw_image)))
-                    self.last_camera_image = new_camera_image
-                    return new_camera_image
-                return self.last_camera_image
-        return self.last_camera_image
+        return control_pb2.ImageReply(image=(self.camera_image))
 
 
     def handleKeyEvent(self, payload, keyDown):
