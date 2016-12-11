@@ -13,6 +13,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 from subprocess import Popen, PIPE
 from apscheduler.schedulers.background import BackgroundScheduler
+import pkg_resources
 
 remote_control_cozmo = None
 
@@ -274,10 +275,18 @@ def run(sdk_conn):
 
     # Turn on image receiving by the camera
     robot.camera.image_stream_enabled = True
+    logging.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
+
+    keys = pkg_resources.resource_string(__name__, './certs/server.key')
+    certs = pkg_resources.resource_string(__name__, './certs/server.crt')
+    ca = pkg_resources.resource_string(__name__, './certs/ca.crt')
+    key_cert = (((keys, certs),))
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    creds = grpc.ssl_server_credentials(key_cert, ca, True)
     control_pb2.add_ControlServicer_to_server(Control(), server)
-    server.add_insecure_port('[::]:50051')
+        # server.add_insecure_port('[::]:50051')
+    server.add_secure_port('1.tcp.eu.ngrok.io:50051', creds)
     server.start()
 
     while True:
