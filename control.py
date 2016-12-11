@@ -285,8 +285,7 @@ def run(sdk_conn):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     creds = grpc.ssl_server_credentials(key_cert, ca, True)
     control_pb2.add_ControlServicer_to_server(Control(), server)
-        # server.add_insecure_port('[::]:50051')
-    server.add_secure_port('1.tcp.eu.ngrok.io:50051', creds)
+    server.add_secure_port('rpc:50051', creds)
     server.start()
 
     while True:
