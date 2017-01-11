@@ -22,8 +22,8 @@ cert_file_path = "certs/client.crt"
 key_file_path = "certs/client.key"
 cert = (cert_file_path, key_file_path)
 
-url = 'https://www.playperception.com/game/attemptunlockround/'
-url_local = 'https://127.0.0.1/game/attemptunlockround/'
+url = 'https://game.playperception.com/game/attemptunlockround/'
+url_local = 'https://game.localhost/game/attemptunlockround/'
 
 class RemoteControlCozmo:
 
@@ -220,10 +220,10 @@ class BatteryStateDisplay(cozmo.annotate.Annotator):
 
 
 class Control(control_pb2.ControlServicer):
-
+    # rtmp://live-lhr.twitch.tv/app/live_144106515_cfsiuGlEM3J58GAvUHpENFPEaGDRub
     while True:
         try:
-            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '13', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-an', '-c:a', 'aac', '-b:v', '100k', '-b:a', '40k', '-ar', '44100', '-r', '13', '-f', 'flv', 'rtmp://live-lhr.twitch.tv/app/live_144106515_cfsiuGlEM3J58GAvUHpENFPEaGDRub'], stdin=PIPE)
+            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '12', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-b:v', '100k', '-r', '12', '-f', 'flv', 'rtmp://192.168.1.108:1935/live/perception'], stdin=PIPE)
         except:
             continue
         break
@@ -234,7 +234,7 @@ class Control(control_pb2.ControlServicer):
         self.camera_image = default_camera_image
         self.last_camera_update_time = int(time.time() * 1000)
         scheduler = BackgroundScheduler()
-        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06)
+        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.08333)
         scheduler.start()
 
     def refreshImage(self):
