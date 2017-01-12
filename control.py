@@ -12,24 +12,28 @@ import threading
 from io import BytesIO
 from PIL import Image, ImageDraw
 from subprocess import Popen, PIPE
+from threading import Thread
 from apscheduler.schedulers.background import BackgroundScheduler
 import pkg_resources
 import requests
+import chat_engine
+import sound_engine
+import voice_engine
+from threading import Timer
 
 remote_control_cozmo = None
 
-cert_file_path = "certs/client.crt"
-key_file_path = "certs/client.key"
-cert = (cert_file_path, key_file_path)
-
-url = 'https://game.playperception.com/game/attemptunlockround/'
-url_local = 'https://game.localhost/game/attemptunlockround/'
-
 class RemoteControlCozmo:
+
+    charging = False
+    playing = False
 
     def __init__(self, coz):
         self.cozmo = coz
         self.reset()
+        self.charging = False
+        self.playing = False
+        self.battery_update()
 
     def reset(self):
         self.drive_forwards = 0
@@ -49,6 +53,32 @@ class RemoteControlCozmo:
         self.update_driving()
         self.update_head()
         self.update_lift()
+
+    def battery_update(self):
+        robot = self.cozmo.world.robot
+
+        battery_voltage = round(robot.battery_voltage,2)
+        
+        if battery_voltage < 1.5:
+            voice_engine.fspeak('Warning! Battery low. Return to base!')
+        else:
+            print('Battery: %s' % battery_voltage)
+        t = Timer( 20, self.battery_update )
+        t.start()
+
+
+    def update_sound(self):
+        if (self.cozmo.is_on_charger):
+            self.playing = False            
+            if (not self.charging):
+                sound_engine.charging()
+                self.charging = True
+        else:
+            self.charging = False
+            if (not self.playing):            
+                self.playing = True
+                sound_engine.playing()
+        
 
     def handle_key(self, key_code, is_shift_down, is_ctrl_down, is_alt_down, is_key_down):
         '''Called on any key press or release
@@ -166,14 +196,18 @@ class RemoteControlCozmo:
         head_vel = (self.head_up - self.head_down) * head_speed
         self.cozmo.move_head(head_vel)
 
+    def drive_off_ramp(self):
+        sound_engine.off_ramp()
+        self.cozmo.drive_off_charger_contacts().wait_for_completed()
 
     def update_driving(self):
+        self.update_sound()
         drive_dir = (self.drive_forwards - self.drive_back)
 
         if (drive_dir > 0.1) and self.cozmo.is_on_charger:
             # cozmo is stuck on the charger, and user is trying to drive off - issue an explicit drive off action
             try:
-                self.cozmo.drive_off_charger_contacts().wait_for_completed()
+                self.drive_off_ramp()
             except cozmo.exceptions.RobotBusy:
                 # Robot is busy doing another action - try again next time we get a drive impulse
                 pass
@@ -267,7 +301,9 @@ class Control(control_pb2.ControlServicer):
     def handleSayTextEvent(self, payload, more):
         if remote_control_cozmo:
             remote_control_cozmo.try_say_text(payload.text)
-            r = requests.post(url, json={'attempt': payload.text}, cert=cert, verify=False)
+            t = Thread(target=chat_engine.process_speech_input, args=[payload.text])
+            t.daemon = True
+            t.start()
             return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
 
     def handleResetEvent(self, payload, more):
