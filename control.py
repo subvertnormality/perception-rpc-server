@@ -25,6 +25,13 @@ remote_control_cozmo = None
 scheduler = BackgroundScheduler()
 timer = None
 
+cert_file_path = "certs/client.crt"
+key_file_path = "certs/client.key"
+cert = (cert_file_path, key_file_path)
+
+url = 'https://www.playperception.com/game/attemptunlockround/'
+url_local = 'https://127.0.0.1/game/attemptunlockround/'
+
 class RemoteControlCozmo:
 
     def __init__(self, coz):
@@ -84,7 +91,7 @@ class RemoteControlCozmo:
         was_go_fast = self.go_fast
         was_go_slow = self.go_slow
 
-        self.go_fast = is_shift_down
+        self.go_fast = False
         self.go_slow = is_alt_down
 
         speed_changed = (was_go_fast != self.go_fast) or (was_go_slow != self.go_slow)
@@ -258,7 +265,7 @@ class Control(control_pb2.ControlServicer):
 
     while True:
         try:
-            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '18', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-an', '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-r', '24', '-f', 'flv', 'rtmp://live-lhr.twitch.tv/app/live_100410137_UynR1tTmKSA9yPdy9AOV4VpSGYFkjl'], stdin=PIPE)
+            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '13', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-an', '-c:a', 'aac', '-b:v', '100k', '-b:a', '40k', '-ar', '44100', '-r', '13', '-f', 'flv', 'rtmp://live-lhr.twitch.tv/app/live_144106515_cfsiuGlEM3J58GAvUHpENFPEaGDRub'], stdin=PIPE)
         except:
             continue
         break
@@ -276,7 +283,7 @@ class Control(control_pb2.ControlServicer):
         if remote_control_cozmo:
             image = remote_control_cozmo.cozmo.world.latest_image
             if image:
-                self.camera_image = self.serve_pil_image(image.annotate_image(scale=2))
+                self.camera_image = self.serve_pil_image(image.raw_image)
         
     def serve_pil_image(self, pil_img, jpeg_quality=50):
         '''Convert PIL image to relevant image file and send it'''
@@ -302,8 +309,8 @@ class Control(control_pb2.ControlServicer):
     def handleSayTextEvent(self, payload, more):
         if remote_control_cozmo:
             remote_control_cozmo.try_say_text(payload.text)
-            response = chat_engine.process_speech_input(payload.text)
-            return control_pb2.Reply(message=response)
+            r = requests.post(url, json={'attempt': payload.text}, cert=cert, verify=False)
+            return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
 
     def handleResetEvent(self, payload, more):
         if remote_control_cozmo:
@@ -322,9 +329,14 @@ def run(sdk_conn):
     # Turn on image receiving by the camera
     robot.camera.image_stream_enabled = True
 
+    keys = pkg_resources.resource_string(__name__, './certs/server.key')
+    certs = pkg_resources.resource_string(__name__, './certs/server.crt')
+    ca = pkg_resources.resource_string(__name__, './certs/ca.crt')
+    key_cert = (((keys, certs),))
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    creds = grpc.ssl_server_credentials(key_cert, ca, True)
     control_pb2.add_ControlServicer_to_server(Control(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_secure_port('rpc:50051', creds)
     server.start()
 
     while True:
