@@ -18,6 +18,7 @@ import requests
 import chat_engine
 import sound_engine
 import voice_engine
+from lights_engine import LightsEngine
 from threading import Timer
 from cozmo.util import degrees, distance_mm, speed_mmps
 
@@ -36,6 +37,9 @@ class RemoteControlCozmo:
 
     def __init__(self, coz):
         self.cozmo = coz
+        self.playing = False  
+        self.charging = False
+        self.lights_engine = LightsEngine()
         self.reset()
 
     def reset(self):
@@ -64,6 +68,7 @@ class RemoteControlCozmo:
         
         if battery_voltage < 3.6:
             voice_engine.fspeak('Warning! Battery low. Return to base!')
+            self.lights_engine.danger()
         else:
             print('Battery: %s' % battery_voltage)
         global timer
@@ -76,10 +81,12 @@ class RemoteControlCozmo:
             self.playing = False            
             if (not self.charging):
                 sound_engine.charging()
+                self.lights_engine.charging()
                 self.charging = True
         else:
             self.charging = False
-            if (not self.playing):            
+            if (not self.playing):
+                self.lights_engine.normal()      
                 self.playing = True
                 sound_engine.playing()
         
@@ -283,7 +290,7 @@ class Control(control_pb2.ControlServicer):
         if remote_control_cozmo:
             image = remote_control_cozmo.cozmo.world.latest_image
             if image:
-                self.camera_image = self.serve_pil_image(image.raw_image)
+                self.camera_image = self.serve_pil_image(image.annotate_image(scale=2))
         
     def serve_pil_image(self, pil_img, jpeg_quality=50):
         '''Convert PIL image to relevant image file and send it'''
@@ -309,8 +316,8 @@ class Control(control_pb2.ControlServicer):
     def handleSayTextEvent(self, payload, more):
         if remote_control_cozmo:
             remote_control_cozmo.try_say_text(payload.text)
-            r = requests.post(url, json={'attempt': payload.text}, cert=cert, verify=False)
-            return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
+            response = chat_engine.process_speech_input(payload.text)
+            return control_pb2.Reply(message=response)
 
     def handleResetEvent(self, payload, more):
         if remote_control_cozmo:
