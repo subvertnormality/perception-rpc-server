@@ -13,8 +13,17 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 from subprocess import Popen, PIPE
 from apscheduler.schedulers.background import BackgroundScheduler
+import pkg_resources
+import requests
+import chat_engine
+import sound_engine
+import voice_engine
+from threading import Timer
+from cozmo.util import degrees, distance_mm, speed_mmps
 
 remote_control_cozmo = None
+scheduler = BackgroundScheduler()
+timer = None
 
 class RemoteControlCozmo:
 
@@ -41,6 +50,32 @@ class RemoteControlCozmo:
         self.update_head()
         self.update_lift()
 
+    def battery_update(self):
+        robot = self.cozmo.world.robot
+
+        battery_voltage = round(robot.battery_voltage,2)
+        
+        if battery_voltage < 3.6:
+            voice_engine.fspeak('Warning! Battery low. Return to base!')
+        else:
+            print('Battery: %s' % battery_voltage)
+        global timer
+        timer = Timer( 20, self.battery_update )
+        timer.start()
+
+
+    def update_sound(self):
+        if (self.cozmo.is_on_charger):
+            self.playing = False            
+            if (not self.charging):
+                sound_engine.charging()
+                self.charging = True
+        else:
+            self.charging = False
+            if (not self.playing):            
+                self.playing = True
+                sound_engine.playing()
+        
     def handle_key(self, key_code, is_shift_down, is_ctrl_down, is_alt_down, is_key_down):
         '''Called on any key press or release
            Holding a key down may result in repeated handle_key calls with is_key_down==True
@@ -159,6 +194,15 @@ class RemoteControlCozmo:
 
 
     def update_driving(self):
+
+        self.update_sound()
+
+        if (self.cozmo.gyro.y < -5):
+            self.cozmo.drive_wheels(-3000, -3000, -3000*4, -3000*4, duration=0.2)
+            self.cozmo.set_lift_height(1,1,1,0.01).wait_for_completed()
+            self.cozmo.drive_wheels(3000, 3000, 3000*4, 3000*4, duration=0.2)
+            self.cozmo.set_lift_height(0,0,0,0.01).wait_for_completed()
+
         drive_dir = (self.drive_forwards - self.drive_back)
 
         if (drive_dir > 0.1) and self.cozmo.is_on_charger:
@@ -184,18 +228,14 @@ class RemoteControlCozmo:
         self.cozmo.drive_wheels(l_wheel_speed, r_wheel_speed, l_wheel_speed*4, r_wheel_speed*4)
 
 class BatteryStateDisplay(cozmo.annotate.Annotator):
+
     def apply(self, image, scale):
         d = ImageDraw.Draw(image)
 
-        bounds = [15, 15, image.width - 60, image.height]
+        bounds = [10, 345, image.width - 60, image.height]
 
-        def print_line(text_line):
-            if robot.battery_voltage < 2:
-                color = 'red'
-            else:
-                color = 'green'
-
-            text = cozmo.annotate.ImageText(text_line, position=cozmo.annotate.TOP_RIGHT, color=color)
+        def print_line(text_line, color):
+            text = cozmo.annotate.ImageText(text_line, position=cozmo.annotate.TOP_LEFT, color=color)
             text.render(d, bounds)
             TEXT_HEIGHT = 40
             bounds[1] += TEXT_HEIGHT
@@ -204,12 +244,16 @@ class BatteryStateDisplay(cozmo.annotate.Annotator):
 
         battery_voltage = round(robot.battery_voltage,2)
         
-        if battery_voltage < 1.5:
-            print_line('Battery: %s - Return to charger!' % battery_voltage)
+        if battery_voltage < 3.6 and not remote_control_cozmo.cozmo.is_on_charger:
+            print_line('WARNING, BATTERY LOW. RETURN TO CHARGER!', 'red')
+        elif remote_control_cozmo.cozmo.is_on_charger:
+            print_line('BATTERY CHARGING', 'white')
+        elif battery_voltage > 3.6 and battery_voltage < 4:
+            print_line('BATTERY OK', 'yellow')
         else:
-            print_line('Battery: %s' % battery_voltage)
+            print_line('BATTERY GOOD', 'green')
 
-
+            
 class Control(control_pb2.ControlServicer):
 
     while True:
@@ -224,8 +268,8 @@ class Control(control_pb2.ControlServicer):
         default_camera_image = Image.frombytes('RGB', (320, 240), bytes(image_bytes))
         self.camera_image = default_camera_image
         self.last_camera_update_time = int(time.time() * 1000)
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.06)
+        global scheduler
+        scheduler.add_job(self.refreshImage, 'interval', seconds = 0.08333)
         scheduler.start()
 
     def refreshImage(self):
@@ -258,7 +302,8 @@ class Control(control_pb2.ControlServicer):
     def handleSayTextEvent(self, payload, more):
         if remote_control_cozmo:
             remote_control_cozmo.try_say_text(payload.text)
-            return control_pb2.Reply(message="Cozmo successfully said " + payload.text)
+            response = chat_engine.process_speech_input(payload.text)
+            return control_pb2.Reply(message=response)
 
     def handleResetEvent(self, payload, more):
         if remote_control_cozmo:
@@ -270,6 +315,8 @@ def run(sdk_conn):
     robot = sdk_conn.wait_for_robot()
     robot.world.image_annotator.add_annotator('battery', BatteryStateDisplay);
     global remote_control_cozmo
+    global scheduler
+    global timer
     remote_control_cozmo = RemoteControlCozmo(robot)
 
     # Turn on image receiving by the camera
@@ -281,6 +328,11 @@ def run(sdk_conn):
     server.start()
 
     while True:
+        if not robot.conn.is_connected:
+            scheduler.shutdown(wait=False)
+            timer.cancel()
+            timer.join()
+            sys.exit()
         time.sleep(1)
 
 if __name__ == '__main__':
