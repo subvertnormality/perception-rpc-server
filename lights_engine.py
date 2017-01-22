@@ -20,5 +20,5 @@ class LightsEngine:
 
     def charging(self):
         if (self.state != 'charging'):
-            ffmpeg_process = Popen(['C:\Python27\python.exe', 'flux_led.py', self.bulb_addr, '-C', 'gradual', '200', '0,255,0, 255,255,0'], stdin=PIPE)
+            ffmpeg_process = Popen(['C:\Python27\python.exe', 'flux_led.py', self.bulb_addr, '-C', 'gradual', '200', '170,0,255, 255,255,0'], stdin=PIPE)
             self.state = 'charging'

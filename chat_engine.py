@@ -13,12 +13,12 @@ cert = (cert_file_path, key_file_path)
 keywords = [ 
   'hello',
   'help',
-  'Kappa',
-  'BibleThump',
-  'PJSalt',
-  'DansGame',
-  'Jebaited',
-  'PogChamp'
+  'kappa',
+  'bibleThump',
+  'pjSalt',
+  'dansgame',
+  'jebaited',
+  'pogchamp'
 ]
 
 chatbot = ChatBot(

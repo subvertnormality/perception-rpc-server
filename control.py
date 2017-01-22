@@ -39,6 +39,7 @@ class RemoteControlCozmo:
         self.cozmo = coz
         self.playing = False  
         self.charging = False
+        self.battery_update()
         self.lights_engine = LightsEngine()
         self.reset()
 
@@ -209,8 +210,6 @@ class RemoteControlCozmo:
 
     def update_driving(self):
 
-        self.update_sound()
-
         if (self.cozmo.gyro.y < -5):
             self.cozmo.drive_wheels(-3000, -3000, -3000*4, -3000*4, duration=0.2)
             self.cozmo.set_lift_height(1,1,1,0.01).wait_for_completed()
@@ -233,7 +232,7 @@ class RemoteControlCozmo:
             # It feels more natural to turn the opposite way when reversing
             turn_dir = -turn_dir
 
-        forward_speed = self.pick_speed(150, 75, 50)
+        forward_speed = self.pick_speed(100, 50, 30)
         turn_speed = self.pick_speed(100, 50, 30)
 
         l_wheel_speed = (drive_dir * forward_speed) + (turn_speed * turn_dir)
@@ -347,6 +346,7 @@ def run(sdk_conn):
     server.start()
 
     while True:
+        remote_control_cozmo.update_sound()
         if not robot.conn.is_connected:
             scheduler.shutdown(wait=False)
             timer.cancel()
