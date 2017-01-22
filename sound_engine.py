@@ -29,17 +29,19 @@ def stop_sound(path):
   sound.stop()
 
 def charging():
-  stop_sound("../sounds/charging.wav")
+  stop_sound("../sounds/siren.wav")
   stop_sound("../sounds/playing.wav")
+  stop_sound("../sounds/charging.wav")
   play_sound("../sounds/charging.wav", -1, 1)
 
-def siren():
+def danger():
+  stop_sound("../sounds/siren.wav")
+  stop_sound("../sounds/playing.wav")
+  stop_sound("../sounds/charging.wav")
   play_sound("../sounds/siren.wav", -1, 0.6)
 
-def stop_siren():
-  stop_sound("../sounds/siren.wav")
-
 def playing():
+  stop_sound("../sounds/siren.wav")
   stop_sound("../sounds/playing.wav")
   stop_sound("../sounds/charging.wav")
   play_sound("../sounds/playing.wav", -1, 1)

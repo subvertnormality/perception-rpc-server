@@ -39,6 +39,7 @@ class RemoteControlCozmo:
         self.cozmo = coz
         self.playing = False  
         self.charging = False
+        self.danger = False
         self.battery_update()
         self.lights_engine = LightsEngine()
         self.reset()
@@ -67,9 +68,8 @@ class RemoteControlCozmo:
 
         battery_voltage = round(robot.battery_voltage,2)
         
-        if battery_voltage < 3.6:
+        if battery_voltage < 3.6 and not self.cozmo.is_on_charger:
             voice_engine.fspeak('Warning! Battery low. Return to base!')
-            self.lights_engine.danger()
         else:
             print('Battery: %s' % battery_voltage)
         global timer
@@ -77,19 +77,28 @@ class RemoteControlCozmo:
         timer.start()
 
 
-    def update_sound(self):
-        if (self.cozmo.is_on_charger):
-            self.playing = False            
-            if (not self.charging):
-                sound_engine.charging()
-                self.lights_engine.charging()
-                self.charging = True
+    def update_environment(self):
+        robot = self.cozmo.world.robot
+        battery_voltage = round(robot.battery_voltage,2)
+
+        if battery_voltage < 3.6 and not self.cozmo.is_on_charger:
+            if (not self.danger):
+                self.lights_engine.danger()
+                sound_engine.danger()
+                self.danger = True
         else:
-            self.charging = False
-            if (not self.playing):
-                self.lights_engine.normal()      
-                self.playing = True
-                sound_engine.playing()
+            if (self.cozmo.is_on_charger):
+                self.playing = False            
+                if (not self.charging):
+                    sound_engine.charging()
+                    self.lights_engine.charging()
+                    self.charging = True
+            else:
+                self.charging = False
+                if (not self.playing):
+                    self.lights_engine.normal()      
+                    self.playing = True
+                    sound_engine.playing()
         
     def handle_key(self, key_code, is_shift_down, is_ctrl_down, is_alt_down, is_key_down):
         '''Called on any key press or release
@@ -346,7 +355,7 @@ def run(sdk_conn):
     server.start()
 
     while True:
-        remote_control_cozmo.update_sound()
+        remote_control_cozmo.update_environment()
         if not robot.conn.is_connected:
             scheduler.shutdown(wait=False)
             timer.cancel()
