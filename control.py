@@ -82,18 +82,22 @@ class RemoteControlCozmo:
         battery_voltage = round(robot.battery_voltage,2)
 
         if battery_voltage < 3.6 and not self.cozmo.is_on_charger:
+            self.charging = False
+            self.playing = False 
             if (not self.danger):
                 self.lights_engine.danger()
                 sound_engine.danger()
                 self.danger = True
         else:
             if (self.cozmo.is_on_charger):
+                self.danger = False
                 self.playing = False            
                 if (not self.charging):
                     sound_engine.charging()
                     self.lights_engine.charging()
                     self.charging = True
             else:
+                self.danger = False
                 self.charging = False
                 if (not self.playing):
                     self.lights_engine.normal()      
@@ -280,7 +284,7 @@ class Control(control_pb2.ControlServicer):
 
     while True:
         try:
-            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '13', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-an', '-c:a', 'aac', '-b:v', '100k', '-b:a', '40k', '-ar', '44100', '-r', '13', '-f', 'flv', 'rtmp://live-lhr.twitch.tv/app/live_144106515_cfsiuGlEM3J58GAvUHpENFPEaGDRub'], stdin=PIPE)
+            ffmpeg_process = Popen(['ffmpeg', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-r', '13', '-i', '-', '-s', '800x450', '-vcodec', 'libx264', '-b:v', '120k', '-r', '13', '-f', 'flv', 'rtmp://192.168.1.108:1935/live/perception'], stdin=PIPE)
         except:
             continue
         break
